@@ -1,0 +1,20 @@
+// ==============================================================================
+// Global Scale Knob (Root Scaling)
+// ==============================================================================
+// Deliberately keys off logical viewport width (100vw / 90) rather than
+// devicePixelRatio to handle OS display-scaling & responsive typography
+// correctly across screen sizes without breaking component layout density.
+// Because all tokens & utility classes compute via rem(), scaling font-size
+// on <html> dynamically scales the entire UI seamlessly.
+// ==============================================================================
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: clamp(13px, 100vw / 90, 18px);
+}
+

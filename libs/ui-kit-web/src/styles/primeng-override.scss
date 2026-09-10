@@ -1,0 +1,60 @@
+// ==========================================
+// PrimeNG Style Overrides
+// Re-points PrimeNG component classes to
+// design system --stag-* and --mod-* variables
+// ==========================================
+
+.p-button {
+  background-color: var(--mod-background-brand-normal);
+  color: var(--mod-text-white-normal);
+  border-radius: var(--corner-radius-medium);
+  border: none;
+  font-family: var(--font-family-base);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    background-color: var(--mod-background-brand-spotlight);
+    color: var(--mod-text-white-spotlight);
+  }
+
+  &:disabled {
+    background-color: var(--mod-background-brand-disabled);
+    color: var(--mod-text-white-disabled);
+    cursor: not-allowed;
+  }
+}
+
+.p-inputtext {
+  background-color: var(--stag-background-white-base);
+  color: var(--stag-text-primary);
+  border: 1px solid var(--stag-border-gray-subtle);
+  border-radius: var(--corner-radius-medium);
+  font-family: var(--font-family-base);
+
+  &:focus {
+    border-color: var(--stag-border-brand-normal);
+    box-shadow: 0 0 0 2px var(--stag-background-brand-subtle);
+  }
+}
+
+.p-datepicker-day-selected {
+  background-color: var(--mod-background-brand-normal) !important;
+  color: var(--mod-text-white-normal) !important;
+}
+
+.p-card {
+  background-color: var(--stag-background-white-base);
+  border: 1px solid var(--stag-border-gray-subtle);
+  border-radius: var(--corner-radius-large);
+  color: var(--stag-text-primary);
+}
+
+.p-dialog {
+  border-radius: var(--corner-radius-xlarge);
+  background-color: var(--stag-background-white-base);
+}
+
+.p-tag {
+  border-radius: var(--corner-radius-small);
+  font-family: var(--font-family-base);
+}

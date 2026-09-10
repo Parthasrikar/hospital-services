@@ -1,0 +1,123 @@
+// ==========================================
+// Core Utility Classes
+// Stamped out via Sass loops & rem()
+// ==========================================
+@use 'sass:math';
+@use 'functions' as *;
+@use 'sizes' as *;
+
+// Corner Radius Utilities (.corner-radius-0 .. .corner-radius-32)
+@for $i from 0 through 32 {
+  .corner-radius-#{$i} {
+    border-radius: #{rem($i)};
+  }
+}
+
+// Icon Size Utilities (.icon-size-8 .. .icon-size-64)
+@for $i from 8 through 64 {
+  .icon-size-#{$i} {
+    width: #{rem($i)};
+    height: #{rem($i)};
+  }
+}
+
+// Border Width Utilities (.border-width-0 .. .border-width-8)
+@for $i from 0 through 8 {
+  .border-width-#{$i} {
+    border-width: #{rem($i)};
+    border-style: solid;
+  }
+}
+
+// Opacity Utilities (.opacity-0 .. .opacity-100)
+@for $i from 0 through 10 {
+  .opacity-#{$i * 10} {
+    opacity: math.div($i, 10);
+  }
+}
+
+// Text Truncate Utilities (.truncate-1 .. .truncate-5)
+@for $i from 1 through 5 {
+  .truncate-#{$i} {
+    display: -webkit-box;
+    -webkit-line-clamp: $i;
+    line-clamp: $i;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+// ==========================================
+// Spacing Utilities (Margin, Padding, Gap)
+// ==========================================
+@each $key, $val in $spacing-value {
+  $rem-val: #{rem($val)};
+
+  .m-#{$key}  { margin: $rem-val; }
+  .mt-#{$key} { margin-top: $rem-val; }
+  .mr-#{$key} { margin-right: $rem-val; }
+  .mb-#{$key} { margin-bottom: $rem-val; }
+  .ml-#{$key} { margin-left: $rem-val; }
+  .mx-#{$key} { margin-left: $rem-val; margin-right: $rem-val; }
+  .my-#{$key} { margin-top: $rem-val; margin-bottom: $rem-val; }
+
+  .p-#{$key}  { padding: $rem-val; }
+  .pt-#{$key} { padding-top: $rem-val; }
+  .pr-#{$key} { padding-right: $rem-val; }
+  .pb-#{$key} { padding-bottom: $rem-val; }
+  .pl-#{$key} { padding-left: $rem-val; }
+  .px-#{$key} { padding-left: $rem-val; padding-right: $rem-val; }
+  .py-#{$key} { padding-top: $rem-val; padding-bottom: $rem-val; }
+
+  .gap-#{$key} { gap: $rem-val; }
+}
+
+// ==========================================
+// Width & Height Utilities
+// ==========================================
+.w-full { width: 100%; }
+.w-screen { width: 100vw; }
+.w-auto { width: auto; }
+.w-fit { width: fit-content; }
+
+.h-full { height: 100%; }
+.h-screen { height: 100vh; }
+.h-auto { height: auto; }
+.min-h-screen { min-height: 100vh; }
+
+@each $key, $val in $max-width-value {
+  .max-w-#{$key} {
+    max-width: #{rem($val)};
+  }
+}
+.max-w-full { max-width: 100%; }
+
+// ==========================================
+// Layout & Flexbox Utilities
+// ==========================================
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.flex-row { flex-direction: row; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1 1 0%; }
+.flex-auto { flex: 1 1 auto; }
+.flex-none { flex: none; }
+
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.items-stretch { align-items: stretch; }
+
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+
+.grid { display: grid; }
+@for $i from 1 through 12 {
+  .grid-cols-#{$i} {
+    grid-template-columns: repeat($i, minmax(0, 1fr));
+  }
+}

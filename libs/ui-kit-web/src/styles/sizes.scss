@@ -1,0 +1,58 @@
+// ==========================================
+// Unitless Sizing & Layout Scales
+// ==========================================
+
+$icon-size-value: (
+  'xsmall': 12,
+  'small': 16,
+  'medium': 20,
+  'large': 24,
+  'xlarge': 32,
+  'xxlarge': 48,
+);
+
+$corner-radius-value: (
+  'none': 0,
+  'small': 4,
+  'medium': 8,
+  'large': 12,
+  'xlarge': 16,
+  'full': 9999,
+);
+
+$border-width-value: (
+  'none': 0,
+  'thin': 1,
+  'medium': 2,
+  'thick': 4,
+);
+
+$spacing-value: (
+  '0': 0,
+  '1': 4,
+  '2': 8,
+  '3': 12,
+  '4': 16,
+  '5': 20,
+  '6': 24,
+  '8': 32,
+  '10': 40,
+  '12': 48,
+  '16': 64,
+  '20': 80,
+  '24': 96,
+);
+
+$max-width-value: (
+  'xs': 320,
+  'sm': 384,
+  'md': 448,
+  'lg': 512,
+  'xl': 576,
+  '2xl': 672,
+  '3xl': 768,
+  '4xl': 896,
+  '5xl': 1024,
+  '6xl': 1152,
+  '7xl': 1280,
+);

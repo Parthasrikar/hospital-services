@@ -1,0 +1,11 @@
+// ==========================================
+// Rem Conversion Function
+// ==========================================
+@use 'sass:math';
+
+@function rem($val) {
+  @if $val == 0 {
+    @return 0;
+  }
+  @return math.div($val, 16) * 1rem;
+}

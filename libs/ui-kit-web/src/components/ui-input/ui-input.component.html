@@ -1,0 +1,19 @@
+<div class="ui-input flex flex-col gap-1 w-full">
+  @if (label) {
+    <label [for]="id" class="body-sm font-medium">{{ label }}</label>
+  }
+  <input
+    [id]="id"
+    [type]="type"
+    [placeholder]="placeholder"
+    [value]="value"
+    [disabled]="disabled"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    class="w-full"
+    [class.is-invalid]="!!errorMessage"
+  />
+  @if (errorMessage) {
+    <span class="caption color-error">{{ errorMessage }}</span>
+  }
+</div>

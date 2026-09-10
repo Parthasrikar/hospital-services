@@ -1,0 +1,15 @@
+// ==============================================================================
+// Global Styles Barrel (libs/ui-kit-web/src/styles/index.scss)
+// Pulls in primitive palette, semantic tokens, root scaling, typography,
+// utility classes, and 3rd-party overrides for global build-target injection.
+// ==============================================================================
+
+@forward 'colors';
+@forward 'color-tokens';
+@forward 'sizes';
+@forward 'functions';
+@forward 'size-tokens';
+@forward 'root-scaling';
+@forward 'typography';
+@forward 'core';
+@forward 'primeng-override';

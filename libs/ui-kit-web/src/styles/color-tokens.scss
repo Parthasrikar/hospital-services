@@ -1,0 +1,124 @@
+// ==========================================
+// Semantic Color Tokens (Layer B)
+// Recursive Mixin + Map Architecture
+// ==========================================
+@use 'sass:map';
+@use 'sass:meta';
+
+// Recursive mixin walking nested maps to emit CSS custom properties
+@mixin generate-css-vars($map, $prefix: '') {
+  @each $key, $value in $map {
+    $full-key: $key;
+    @if $prefix != '' {
+      $full-key: '#{$prefix}-#{$key}';
+    }
+    @if meta.type-of($value) == 'map' {
+      @include generate-css-vars($value, $full-key);
+    } @else {
+      --#{$full-key}: #{$value};
+    }
+  }
+}
+
+// Static Roles ($stag) - for non-interactive UI elements
+$stag: (
+  'background': (
+    'surface': var(--white),
+    'disabled': var(--blue-gray-100),
+    'white': (
+      'base': var(--white),
+    ),
+    'gray': (
+      'subtle': var(--blue-gray-50),
+      'normal': var(--blue-gray-100),
+      'intense': var(--blue-gray-200),
+    ),
+    'brand': (
+      'subtle': var(--primary-50),
+      'normal': var(--primary-500),
+      'intense': var(--primary-700),
+    ),
+    'error': (
+      'subtle': var(--error-50),
+      'normal': var(--error-500),
+      'intense': var(--error-700),
+    ),
+  ),
+  'border': (
+    'neutral': (
+      'subtle': var(--blue-gray-200),
+      'normal': var(--blue-gray-300),
+    ),
+    'gray': (
+      'subtle': var(--blue-gray-200),
+      'normal': var(--blue-gray-300),
+    ),
+    'brand': (
+      'normal': var(--primary-500),
+      'intense': var(--primary-700),
+    ),
+    'error': (
+      'normal': var(--error-500),
+    ),
+  ),
+  'text': (
+    'primary': var(--blue-gray-900),
+    'secondary': var(--blue-gray-600),
+    'disabled': var(--blue-gray-400),
+    'brand': var(--primary-600),
+    'error': (
+      'normal': var(--error-600),
+      'intense': var(--error-700),
+    ),
+  ),
+);
+
+// Interactive-State Modifiers ($mod) - hover/focus/active/disabled states
+$mod: (
+  'background': (
+    'white': (
+      'normal': var(--white),
+      'spotlight': var(--blue-gray-50),
+      'disabled': var(--blue-gray-100),
+      'transparent': transparent,
+    ),
+    'brand': (
+      'normal': var(--primary-600),
+      'spotlight': var(--primary-700),
+      'disabled': var(--primary-200),
+    ),
+    'error': (
+      'normal': var(--error-600),
+      'spotlight': var(--error-700),
+      'disabled': var(--error-200),
+    ),
+  ),
+  'text': (
+    'white': (
+      'normal': var(--white),
+      'spotlight': var(--blue-gray-100),
+      'disabled': var(--blue-gray-300),
+    ),
+    'brand': (
+      'normal': var(--primary-600),
+      'spotlight': var(--primary-700),
+      'disabled': var(--primary-300),
+    ),
+  ),
+);
+
+// Brand Accent Colors ($global-colors)
+$global-colors: (
+  'accent': (
+    'indigo': var(--indigo-500),
+    'purple': var(--purple-500),
+    'pink': var(--pink-500),
+  ),
+);
+
+// Flatten into :root custom properties
+:root {
+  @include generate-css-vars($stag, 'stag');
+  @include generate-css-vars($mod, 'mod');
+  @include generate-css-vars($global-colors, 'global');
+}

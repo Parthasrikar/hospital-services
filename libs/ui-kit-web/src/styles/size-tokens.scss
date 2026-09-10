@@ -1,0 +1,31 @@
+// ==========================================
+// Size Tokens (px -> rem -> CSS Custom Props)
+// ==========================================
+@use 'sizes' as *;
+@use 'functions' as *;
+
+:root {
+  @each $key, $val in $icon-size-value {
+    --icon-size-#{$key}: #{rem($val)};
+  }
+
+  @each $key, $val in $corner-radius-value {
+    @if $val == 9999 {
+      --corner-radius-#{$key}: 9999px;
+    } @else {
+      --corner-radius-#{$key}: #{rem($val)};
+    }
+  }
+
+  @each $key, $val in $border-width-value {
+    --border-width-#{$key}: #{rem($val)};
+  }
+
+  @each $key, $val in $spacing-value {
+    --spacing-#{$key}: #{rem($val)};
+  }
+
+  @each $key, $val in $max-width-value {
+    --max-w-#{$key}: #{rem($val)};
+  }
+}

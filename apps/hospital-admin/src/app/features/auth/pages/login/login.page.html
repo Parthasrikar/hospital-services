@@ -1,0 +1,60 @@
+<div class="login-page min-h-screen flex items-center justify-center p-4">
+  <div class="login-card w-full max-w-md p-8 corner-radius-16">
+    <!-- Header with Design System Icon -->
+    <div class="flex flex-col items-center justify-center gap-2 mb-6">
+      <div class="icon-badge p-3 corner-radius-12 flex items-center justify-center">
+        <ui-icon name="user.svg" size="xlarge" color="var(--stag-text-brand)"></ui-icon>
+      </div>
+      <h1 class="heading-md font-bold mt-2">Hospital Admin Portal</h1>
+      <p class="body-sm text-secondary">Sign in to manage hospital operations & staff</p>
+    </div>
+
+    <!-- Server Error Alert -->
+    @if (serverError) {
+      <div class="mb-4 p-3 corner-radius-8 bg-error-subtle color-error body-sm flex items-center gap-2">
+        <ui-icon name="alert-circle.svg" size="small"></ui-icon>
+        <span>{{ serverError }}</span>
+      </div>
+    }
+
+    <!-- Login Form -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+      <ui-input
+        id="email"
+        type="email"
+        label="Email Address"
+        placeholder="admin@hospital.com"
+        formControlName="email"
+        [errorMessage]="emailError"
+      ></ui-input>
+
+      <ui-input
+        id="password"
+        type="password"
+        label="Password"
+        placeholder="••••••••"
+        formControlName="password"
+        [errorMessage]="passwordError"
+      ></ui-input>
+
+      <div class="flex items-center justify-between my-2">
+        <label class="flex items-center gap-2 body-sm cursor-pointer">
+          <input type="checkbox" formControlName="rememberMe" />
+          <span>Remember me</span>
+        </label>
+        <a href="javascript:void(0)" class="body-sm link-brand">Forgot Password?</a>
+      </div>
+
+      <button
+        type="submit"
+        class="p-button w-full p-3 flex items-center justify-center gap-2 font-semibold mt-2"
+        [disabled]="isLoading"
+      >
+        @if (!isLoading) {
+          <ui-icon name="check.svg" size="small"></ui-icon>
+        }
+        <span>{{ isLoading ? 'Signing in...' : 'Sign In' }}</span>
+      </button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,23 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: hospital_mongo
+    restart: unless-stopped
+    ports:
+      - '27019:27017'
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mongod --replSet rs0 --bind_ip_all &
+        MONGOD_PID=$$!
+        until mongosh --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+          sleep 1
+        done
+        mongosh --eval "try { rs.status() } catch (err) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }"
+        wait $$MONGOD_PID
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
