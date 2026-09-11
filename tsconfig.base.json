@@ -16,7 +16,8 @@
     "strict": false,
     "paths": {
       "@hospital-services/ui-kit-web": ["./libs/ui-kit-web/src/index.ts"],
-      "@hospital-services/icons-kit-web": ["./libs/icons-kit-web/src/index.ts"]
+      "@hospital-services/icons-kit-web": ["./libs/icons-kit-web/src/index.ts"],
+      "@hospital-services/api-client": ["./libs/api-client/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

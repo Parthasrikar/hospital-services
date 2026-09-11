@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UiIconComponent, UiInputComponent } from '@hospital-services/ui-kit-web';
-import { AuthService } from '../../../../core/services/auth.service';
+import { AuthApiService } from '@hospital-services/api-client';
 
 @Component({
   selector: 'app-login-page',
@@ -15,7 +15,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class LoginPage {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private authService = inject(AuthService);
+  private authApi = inject(AuthApiService);
 
   isLoading = false;
   serverError: string | null = null;
@@ -51,7 +51,7 @@ export class LoginPage {
     this.isLoading = true;
     this.serverError = null;
 
-    this.authService.login(this.loginForm.value).subscribe({
+    this.authApi.login(this.loginForm.value).subscribe({
       next: () => {
         this.isLoading = false;
         this.router.navigate(['/dashboard']);

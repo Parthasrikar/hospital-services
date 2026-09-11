@@ -271,9 +271,9 @@ sequenceDiagram
 
 ## 5. Frontend Angular Integration (`hospital-admin` & `patient-web`)
 
-Because tokens are managed via HTTP-Only cookies, frontends do **not** read or store raw token strings in `localStorage`.
+Because tokens are managed via HTTP-Only cookies, frontends do **not** read or store raw token strings in `localStorage` or maintain local wrapper services. All frontend applications consume `AuthApiService` directly from `@hospital-services/api-client`.
 
-### Angular `authInterceptor` Configuration:
+### Angular `authInterceptor` Configuration (`withCredentials: true`):
 [`apps/hospital-admin/src/app/core/interceptors/auth.interceptor.ts`](file:///Users/gparthasrikar/Documents/projects/hospital-services/hospital-services/apps/hospital-admin/src/app/core/interceptors/auth.interceptor.ts)
 ```typescript
 import { HttpInterceptorFn } from '@angular/common/http';
@@ -285,6 +285,31 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   });
 
   return next(authReq);
+};
+```
+
+### Angular `errorInterceptor` Configuration:
+[`apps/hospital-admin/src/app/core/interceptors/error.interceptor.ts`](file:///Users/gparthasrikar/Documents/projects/hospital-services/hospital-services/apps/hospital-admin/src/app/core/interceptors/error.interceptor.ts)
+```typescript
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
+import { AuthApiService } from '@hospital-services/api-client';
+
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
+  const authApi = inject(AuthApiService);
+
+  return next(req).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401) {
+        authApi.logout().subscribe(); // Clears user signals and invalidates session
+        router.navigate(['/auth/login']);
+      }
+      return throwError(() => error);
+    })
+  );
 };
 ```
 
