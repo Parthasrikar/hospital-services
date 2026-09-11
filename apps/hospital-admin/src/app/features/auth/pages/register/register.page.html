@@ -1,12 +1,12 @@
-<div class="login-page min-h-screen flex items-center justify-center p-4">
-  <div class="login-card w-full max-w-md p-8 corner-radius-16">
+<div class="register-page min-h-screen flex items-center justify-center p-4">
+  <div class="register-card w-full max-w-md p-8 corner-radius-16">
     <!-- Header with Design System Icon -->
     <div class="flex flex-col items-center justify-center gap-2 mb-6">
       <div class="icon-badge p-3 corner-radius-12 flex items-center justify-center">
         <ui-icon name="user.svg" size="xlarge" color="var(--stag-text-brand)"></ui-icon>
       </div>
-      <h1 class="heading-md font-bold mt-2">Hospital Admin Portal</h1>
-      <p class="body-sm text-secondary">Sign in to manage hospital operations & staff</p>
+      <h1 class="heading-md font-bold mt-2">Create Account</h1>
+      <p class="body-sm text-secondary">Register a new administrator account</p>
     </div>
 
     <!-- Server Error Alert -->
@@ -17,8 +17,17 @@
       </div>
     }
 
-    <!-- Login Form -->
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+    <!-- Registration Form -->
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+      <ui-input
+        id="fullName"
+        type="text"
+        label="Full Name"
+        placeholder="Dr. Jane Doe"
+        formControlName="fullName"
+        [errorMessage]="fullNameError"
+      ></ui-input>
+
       <ui-input
         id="email"
         type="email"
@@ -26,6 +35,14 @@
         placeholder="admin@hospital.com"
         formControlName="email"
         [errorMessage]="emailError"
+      ></ui-input>
+
+      <ui-input
+        id="phone"
+        type="tel"
+        label="Phone Number (Optional)"
+        placeholder="+91 9876543210"
+        formControlName="phone"
       ></ui-input>
 
       <ui-input
@@ -37,9 +54,14 @@
         [errorMessage]="passwordError"
       ></ui-input>
 
-      <div class="flex items-center justify-end my-1">
-        <a href="javascript:void(0)" class="body-sm link-brand">Forgot Password?</a>
-      </div>
+      <ui-input
+        id="confirmPassword"
+        type="password"
+        label="Confirm Password"
+        placeholder="••••••••"
+        formControlName="confirmPassword"
+        [errorMessage]="confirmPasswordError"
+      ></ui-input>
 
       <button
         type="submit"
@@ -49,14 +71,14 @@
         @if (!isLoading) {
           <ui-icon name="check.svg" size="small"></ui-icon>
         }
-        <span>{{ isLoading ? 'Signing in...' : 'Sign In' }}</span>
+        <span>{{ isLoading ? 'Creating Account...' : 'Register' }}</span>
       </button>
     </form>
 
-    <!-- Navigation Link to Register -->
+    <!-- Navigation Link to Login -->
     <div class="flex items-center justify-center mt-6 pt-4 border-t text-sm">
-      <span class="text-secondary mr-2">Don't have an account?</span>
-      <a routerLink="/auth/register" class="link-brand font-medium">Sign Up</a>
+      <span class="text-secondary mr-2">Already have an account?</span>
+      <a routerLink="/auth/login" class="link-brand font-medium">Sign In</a>
     </div>
   </div>
 </div>

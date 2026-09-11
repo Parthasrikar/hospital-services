@@ -1,21 +1,21 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { UiIconComponent, UiInputComponent } from '@hospital-services/ui-kit-web';
-import { AuthService } from '../../../../core/services/auth.service';
+import { AuthApiService } from '@hospital-services/api-client';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, UiIconComponent, UiInputComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, UiIconComponent, UiInputComponent],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.scss'],
 })
 export class LoginPage {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private authService = inject(AuthService);
+  private authApi = inject(AuthApiService);
 
   isLoading = false;
   serverError: string | null = null;
@@ -23,7 +23,6 @@ export class LoginPage {
   loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
-    rememberMe: [false],
   });
 
   get emailError(): string | undefined {
@@ -51,16 +50,21 @@ export class LoginPage {
     this.isLoading = true;
     this.serverError = null;
 
-    this.authService.login(this.loginForm.value).subscribe({
+    const credentials = {
+      email: this.loginForm.value.email,
+      password: this.loginForm.value.password,
+    };
+
+    this.authApi.login(credentials).subscribe({
       next: () => {
         this.isLoading = false;
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.isLoading = false;
-        this.serverError = err.error?.message || 'Invalid email or password. Please try again.';
+        const msg = err.response?.data?.message || err.error?.message || err.message;
+        this.serverError = Array.isArray(msg) ? msg.join(', ') : msg || 'Invalid email or password. Please try again.';
       },
     });
   }
 }
-
