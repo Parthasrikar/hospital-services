@@ -84,34 +84,35 @@ erDiagram
 
 ```
 apps/api/src/app/
-├── auth/
-│   ├── decorators/
-│   │   ├── current-user.decorator.ts    # Custom parameter decorator to extract req.user
-│   │   └── roles.decorator.ts           # Metadata decorator to specify required roles
-│   ├── dto/
-│   │   ├── auth-response.dto.ts         # UserProfileDto and AuthResponseDto
-│   │   ├── login.dto.ts                 # Login validation schema
-│   │   └── register.dto.ts              # Registration validation schema
-│   ├── guards/
-│   │   ├── jwt-access.guard.ts          # Protects routes requiring valid access token
-│   │   ├── jwt-refresh.guard.ts         # Protects refresh route requiring valid refresh token
-│   │   └── roles.guard.ts               # Enforces Role-Based Access Control (RBAC)
-│   ├── strategies/
-│   │   ├── google.strategy.ts           # Prepared Google OAuth 2.0 configuration stub
-│   │   ├── jwt-access.strategy.ts       # Extracts & validates access_token cookie
-│   │   └── jwt-refresh.strategy.ts      # Extracts & validates refresh_token cookie
-│   ├── utils/
-│   │   └── cookie.utils.ts              # setAuthCookies() & clearAuthCookies() helpers
-│   ├── auth.controller.ts               # Auth REST endpoints
-│   ├── auth.module.ts                   # Auth feature module configuration
-│   └── auth.service.ts                  # Auth business logic (hashing, sessions, JWTs)
-├── users/
-│   ├── users.controller.ts              # Profile retrieval and update endpoints
-│   ├── users.module.ts                 # Users feature module configuration
-│   └── users.service.ts                 # User profile query service
-├── prisma/
-│   ├── prisma.module.ts                 # Database access module
-│   └── prisma.service.ts                # Prisma singleton client service
+├── modules/
+│   ├── auth/
+│   │   ├── decorators/
+│   │   │   ├── current-user.decorator.ts    # Custom parameter decorator to extract req.user
+│   │   │   └── roles.decorator.ts           # Metadata decorator to specify required roles
+│   │   ├── dto/
+│   │   │   ├── auth-response.dto.ts         # UserProfileDto and AuthResponseDto
+│   │   │   ├── login.dto.ts                 # Login validation schema
+│   │   │   └── register.dto.ts              # Registration validation schema
+│   │   ├── guards/
+│   │   │   ├── jwt-access.guard.ts          # Protects routes requiring valid access token
+│   │   │   ├── jwt-refresh.guard.ts         # Protects refresh route requiring valid refresh token
+│   │   │   └── roles.guard.ts               # Enforces Role-Based Access Control (RBAC)
+│   │   ├── strategies/
+│   │   │   ├── google.strategy.ts           # Prepared Google OAuth 2.0 configuration stub
+│   │   │   ├── jwt-access.strategy.ts       # Extracts & validates access_token cookie
+│   │   │   └── jwt-refresh.strategy.ts      # Extracts & validates refresh_token cookie
+│   │   ├── utils/
+│   │   │   └── cookie.utils.ts              # setAuthCookies() & clearAuthCookies() helpers
+│   │   ├── auth.controller.ts               # Auth REST endpoints
+│   │   ├── auth.module.ts                   # Auth feature module configuration
+│   │   └── auth.service.ts                  # Auth business logic (hashing, sessions, JWTs)
+│   ├── users/
+│   │   ├── users.controller.ts              # Profile retrieval and update endpoints
+│   │   ├── users.module.ts                 # Users feature module configuration
+│   │   └── users.service.ts                 # User profile query service
+│   └── prisma/
+│       ├── prisma.module.ts                 # Database access module
+│       └── prisma.service.ts                # Prisma singleton client service
 └── app.module.ts                        # Main application root module
 ```
 
