@@ -1,14 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { UiIconComponent, UiInputComponent } from '@hospital-services/ui-kit-web';
 import { AuthApiService } from '@hospital-services/api-client';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, UiIconComponent, UiInputComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, UiIconComponent, UiInputComponent],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.scss'],
 })
