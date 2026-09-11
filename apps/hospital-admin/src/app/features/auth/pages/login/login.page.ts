@@ -23,7 +23,6 @@ export class LoginPage {
   loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
-    rememberMe: [false],
   });
 
   get emailError(): string | undefined {
@@ -51,16 +50,21 @@ export class LoginPage {
     this.isLoading = true;
     this.serverError = null;
 
-    this.authApi.login(this.loginForm.value).subscribe({
+    const credentials = {
+      email: this.loginForm.value.email,
+      password: this.loginForm.value.password,
+    };
+
+    this.authApi.login(credentials).subscribe({
       next: () => {
         this.isLoading = false;
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.isLoading = false;
-        this.serverError = err.error?.message || 'Invalid email or password. Please try again.';
+        const msg = err.response?.data?.message || err.error?.message || err.message;
+        this.serverError = Array.isArray(msg) ? msg.join(', ') : msg || 'Invalid email or password. Please try again.';
       },
     });
   }
 }
-

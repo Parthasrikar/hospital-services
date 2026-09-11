@@ -11,4 +11,9 @@ export const appRoutes: Route[] = [
     redirectTo: 'auth/login',
     pathMatch: 'full',
   },
+  {
+    path: 'dashboard',
+    loadChildren: () =>
+      import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
+  }
 ];
