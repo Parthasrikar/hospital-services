@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
+
 
 datasource db {
   provider = "mongodb"
@@ -16,6 +16,11 @@ enum Role {
   STAFF
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
 enum AppointmentStatus {
   SCHEDULED
   COMPLETED
@@ -24,19 +29,48 @@ enum AppointmentStatus {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  password  String
+  id        String         @id @default(auto()) @map("_id") @db.ObjectId
+  email     String         @unique
   fullName  String
-  role      Role     @default(PATIENT)
+  role      Role           @default(PATIENT)
   phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
-  patient ProfilePatient?
-  doctor  ProfileDoctor?
+  identities UserIdentity[]
+  sessions   UserSession[]
+  patient    ProfilePatient?
+  doctor     ProfileDoctor?
 
   @@map("users")
+}
+
+model UserIdentity {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String       @db.ObjectId
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          AuthProvider
+  providerAccountId String?
+  passwordHash      String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@map("user_identities")
+}
+
+model UserSession {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String   @db.ObjectId
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashedRefreshToken String
+  userAgent          String?
+  ipAddress          String?
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+
+  @@map("user_sessions")
 }
 
 model ProfilePatient {
