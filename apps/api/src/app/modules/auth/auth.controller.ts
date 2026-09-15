@@ -17,12 +17,17 @@ import { JwtAccessGuard } from './guards/jwt-access.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from '@prisma/client';
+import { RedisRateLimitGuard } from '../redis/redis-rate-limit.guard';
+import { RateLimit } from '../redis/rate-limit.decorator';
+import { RATE_LIMIT_CONFIGS } from '../redis/redis.constants';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @UseGuards(RedisRateLimitGuard)
+  @RateLimit(RATE_LIMIT_CONFIGS.AUTH_STRICT)
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() dto: RegisterDto,
@@ -33,6 +38,8 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(RedisRateLimitGuard)
+  @RateLimit(RATE_LIMIT_CONFIGS.AUTH_STRICT)
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
@@ -41,6 +48,8 @@ export class AuthController {
   ) {
     return this.authService.login(dto, res, req);
   }
+
+
 
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
