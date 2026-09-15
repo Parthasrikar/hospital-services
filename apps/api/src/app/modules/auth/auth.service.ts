@@ -9,9 +9,12 @@ import { AuthProvider, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_KEYS } from '../redis/redis.constants';
+import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { setAuthCookies, clearAuthCookies } from './utils/cookie.utils';
+
 
 @Injectable()
 export class AuthService {
@@ -19,6 +22,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   async register(dto: RegisterDto, res: Response, req: Request) {
@@ -148,16 +152,22 @@ export class AuthService {
   }
 
   async logout(userId: string, refreshToken: string | undefined, res: Response) {
-    if (userId && refreshToken) {
-      const sessions = await this.prisma.userSession.findMany({
-        where: { userId },
-      });
+    if (userId) {
+      // Invalidate Redis user cache
+      await this.redisService.del(REDIS_KEYS.USER_PROFILE(userId));
 
-      for (const session of sessions) {
-        const isMatch = await bcrypt.compare(refreshToken, session.hashedRefreshToken);
-        if (isMatch) {
-          await this.prisma.userSession.delete({ where: { id: session.id } });
-          break;
+
+      if (refreshToken) {
+        const sessions = await this.prisma.userSession.findMany({
+          where: { userId },
+        });
+
+        for (const session of sessions) {
+          const isMatch = await bcrypt.compare(refreshToken, session.hashedRefreshToken);
+          if (isMatch) {
+            await this.prisma.userSession.delete({ where: { id: session.id } });
+            break;
+          }
         }
       }
     }

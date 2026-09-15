@@ -19,5 +19,14 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  redis:
+    image: redis:7-alpine
+    container_name: hospital_redis
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/data
+
 volumes:
   mongo_data:
+  redis_data:
