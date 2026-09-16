@@ -1,0 +1,67 @@
+<div class="onboarding-page min-h-screen flex items-center justify-center p-4">
+  <div class="onboarding-card w-full max-w-lg p-8 corner-radius-16">
+    <div class="flex flex-col items-center justify-center gap-2 mb-6">
+      <div class="icon-badge p-3 corner-radius-12 flex items-center justify-center">
+        <ui-icon name="user.svg" size="xlarge" color="var(--stag-text-brand)"></ui-icon>
+      </div>
+      <h1 class="heading-md font-bold mt-2">Complete Your Profile</h1>
+      <p class="body-sm text-secondary text-center">
+        Welcome! Please provide a few remaining details to activate your account access.
+      </p>
+    </div>
+
+    @if (serverError) {
+      <div class="mb-4 p-3 corner-radius-8 bg-error-subtle color-error body-sm flex items-center gap-2">
+        <ui-icon name="alert-circle.svg" size="small"></ui-icon>
+        <span>{{ serverError }}</span>
+      </div>
+    }
+
+    <form [formGroup]="onboardingForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+      <ui-input
+        id="phone"
+        type="tel"
+        label="Phone Number"
+        placeholder="+1 (555) 000-0000"
+        formControlName="phone"
+      ></ui-input>
+
+      <div class="flex flex-col gap-1">
+        <label for="roleSelect" class="body-sm font-medium text-secondary">Account Role</label>
+        <select id="roleSelect" formControlName="role" class="p-3 corner-radius-8 border bg-white body-sm">
+          <option value="PATIENT">Patient</option>
+          <option value="DOCTOR">Doctor / Practitioner</option>
+          <option value="NURSE">Nurse / Medical Staff</option>
+          <option value="STAFF">Hospital Staff</option>
+          <option value="ADMIN">Administrator</option>
+        </select>
+      </div>
+
+      @if (isDoctor) {
+        <ui-input
+          id="specialization"
+          type="text"
+          label="Medical Specialization"
+          placeholder="e.g. Cardiology, Pediatrics"
+          formControlName="specialization"
+        ></ui-input>
+
+        <ui-input
+          id="licenseNumber"
+          type="text"
+          label="Medical License Number"
+          placeholder="e.g. MD-123456"
+          formControlName="licenseNumber"
+        ></ui-input>
+      }
+
+      <button
+        type="submit"
+        class="p-button w-full p-3 flex items-center justify-center gap-2 font-semibold mt-4"
+        [disabled]="isLoading"
+      >
+        <span>{{ isLoading ? 'Saving details...' : 'Complete Profile & Continue' }}</span>
+      </button>
+    </form>
+  </div>
+</div>

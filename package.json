@@ -42,6 +42,7 @@
     "@types/ioredis": "^5.0.0",
     "@types/jest": "~30.0.0",
     "@types/node": "^22.0.0",
+    "@types/passport-google-oauth20": "^2.0.17",
     "@typescript-eslint/utils": "^8.58.0",
     "angular-eslint": "^22.0.0",
     "eslint": "^9.8.0",
@@ -87,8 +88,10 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
     "ioredis": "^6.0.0",
     "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "~7.8.0"

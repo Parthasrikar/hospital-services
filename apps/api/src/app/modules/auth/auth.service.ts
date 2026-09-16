@@ -8,22 +8,29 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthProvider, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
+import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_KEYS } from '../redis/redis.constants';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
+import { GoogleProfileData } from './strategies/google.strategy';
 import { setAuthCookies, clearAuthCookies } from './utils/cookie.utils';
-
 
 @Injectable()
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
-  ) {}
+  ) {
+    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    this.googleClient = new OAuth2Client(googleClientId);
+  }
 
   async register(dto: RegisterDto, res: Response, req: Request) {
     const existingUser = await this.prisma.user.findUnique({
@@ -44,6 +51,7 @@ export class AuthService {
           fullName: dto.fullName,
           role: dto.role || Role.PATIENT,
           phone: dto.phone,
+          isProfileComplete: true,
         },
       });
 
@@ -104,6 +112,212 @@ export class AuthService {
     };
   }
 
+  /**
+   * Progressive Google OAuth user validation & account linking
+   */
+  async validateGoogleUser(
+    profileData: GoogleProfileData,
+    res: Response,
+    req: Request,
+    targetRole?: Role,
+  ) {
+    let user = await this.prisma.user.findUnique({
+      where: { email: profileData.email },
+      include: { identities: true },
+    });
+
+    let isNewUser = false;
+
+    if (user) {
+      // Existing user found by email -> check if Google identity already linked
+      const googleIdentity = user.identities.find(
+        (id) => id.provider === AuthProvider.GOOGLE,
+      );
+
+      if (!googleIdentity) {
+        // Progressive Account Linking: Link Google identity to existing local account
+        await this.prisma.userIdentity.create({
+          data: {
+            userId: user.id,
+            provider: AuthProvider.GOOGLE,
+            providerAccountId: profileData.googleId,
+            accessToken: profileData.accessToken,
+            refreshToken: profileData.refreshToken,
+          },
+        });
+      } else if (profileData.accessToken) {
+        // Update stored Google tokens if refreshed
+        await this.prisma.userIdentity.update({
+          where: { id: googleIdentity.id },
+          data: {
+            accessToken: profileData.accessToken,
+            refreshToken: profileData.refreshToken || googleIdentity.refreshToken,
+          },
+        });
+      }
+
+      // Update pictureUrl if missing
+      if (!user.pictureUrl && profileData.picture) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { pictureUrl: profileData.picture },
+          include: { identities: true },
+        });
+      }
+    } else {
+      // New user registering via Google OAuth
+      isNewUser = true;
+      const initialRole = targetRole || Role.PATIENT;
+
+      user = await this.prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email: profileData.email,
+            fullName: profileData.fullName,
+            pictureUrl: profileData.picture,
+            role: initialRole,
+            isProfileComplete: false, // Progressive onboarding required for missing details
+          },
+        });
+
+        await tx.userIdentity.create({
+          data: {
+            userId: newUser.id,
+            provider: AuthProvider.GOOGLE,
+            providerAccountId: profileData.googleId,
+            accessToken: profileData.accessToken,
+            refreshToken: profileData.refreshToken,
+          },
+        });
+
+        return tx.user.findUniqueOrThrow({
+          where: { id: newUser.id },
+          include: { identities: true },
+        });
+      });
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    await this.createSession(user.id, tokens.refreshToken, req);
+
+    setAuthCookies(res, tokens);
+
+    return {
+      message: isNewUser
+        ? 'Account created successfully with Google. Please complete your profile.'
+        : 'Google sign-in successful',
+      user: this.sanitizeUser(user),
+      isProfileComplete: user.isProfileComplete,
+    };
+  }
+
+  /**
+   * Verify Google ID Token (for Google Identity Services frontend button)
+   */
+  async verifyGoogleIdToken(
+    idToken: string,
+    res: Response,
+    req: Request,
+    targetRole?: Role,
+  ) {
+    try {
+      const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: googleClientId,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        throw new BadRequestException('Invalid Google ID Token payload');
+      }
+
+      const profileData: GoogleProfileData = {
+        googleId: payload.sub,
+        email: payload.email.toLowerCase(),
+        firstName: payload.given_name || '',
+        lastName: payload.family_name || '',
+        fullName: payload.name || payload.email.split('@')[0],
+        picture: payload.picture,
+      };
+
+      return this.validateGoogleUser(profileData, res, req, targetRole);
+    } catch (error: unknown) {
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      const errMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new UnauthorizedException('Failed to verify Google ID Token: ' + errMessage);
+    }
+  }
+
+  /**
+   * Complete Progressive Profile Onboarding
+   */
+  async completeProgressiveOnboarding(userId: string, dto: CompleteOnboardingDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: {
+          phone: dto.phone || user.phone,
+          role: dto.role || user.role,
+          isProfileComplete: true,
+        },
+      });
+
+      const userRole = dto.role || user.role;
+
+      if (userRole === Role.PATIENT) {
+        const existingPatient = await tx.profilePatient.findUnique({ where: { userId } });
+        if (!existingPatient) {
+          await tx.profilePatient.create({
+            data: {
+              userId,
+              dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : new Date('1990-01-01'),
+              gender: dto.gender || 'unspecified',
+              bloodGroup: dto.bloodGroup,
+              address: dto.address,
+            },
+          });
+        }
+      } else if (userRole === Role.DOCTOR) {
+        const existingDoctor = await tx.profileDoctor.findUnique({ where: { userId } });
+        if (!existingDoctor) {
+          await tx.profileDoctor.create({
+            data: {
+              userId,
+              specialization: dto.specialization || 'General Practitioner',
+              licenseNumber: dto.licenseNumber || `LIC-${Date.now()}`,
+              consultationFee: dto.consultationFee || 100,
+            },
+          });
+        }
+      }
+
+      return updated;
+    });
+
+    // Invalidate Redis user cache
+    await this.redisService.del(REDIS_KEYS.USER_PROFILE(userId));
+
+    return {
+      message: 'Profile onboarding completed successfully',
+      user: this.sanitizeUser(updatedUser),
+    };
+  }
+
   async refreshTokens(userId: string, refreshToken: string, res: Response, req: Request) {
     const sessions = await this.prisma.userSession.findMany({
       where: {
@@ -155,7 +369,6 @@ export class AuthService {
     if (userId) {
       // Invalidate Redis user cache
       await this.redisService.del(REDIS_KEYS.USER_PROFILE(userId));
-
 
       if (refreshToken) {
         const sessions = await this.prisma.userSession.findMany({
@@ -229,6 +442,8 @@ export class AuthService {
     fullName: string;
     role: Role;
     phone?: string | null;
+    pictureUrl?: string | null;
+    isProfileComplete?: boolean;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -239,6 +454,8 @@ export class AuthService {
       fullName: user.fullName,
       role: user.role,
       phone: user.phone,
+      pictureUrl: user.pictureUrl || null,
+      isProfileComplete: user.isProfileComplete ?? true,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
