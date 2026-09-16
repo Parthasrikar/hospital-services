@@ -1,6 +1,6 @@
 # Comprehensive Authentication Architecture & Lifecycle Documentation
 
-This document provides an exhaustive reference for the authentication system implemented in `apps/api`. It covers the design philosophy, database schema, security mechanisms, file responsibilities, end-to-end lifecycle flows, Mermaid sequence diagrams, and frontend integration.
+This document provides an exhaustive reference for the authentication system implemented in `apps/api` and consumed across `@hospital-services/api-client`, `apps/hospital-admin`, and `apps/patient-web`. It covers security architecture, database schema, Progressive Google OAuth 2.0 integration, account linking, progressive profile onboarding, sequence diagrams, and frontend integration.
 
 ---
 
@@ -23,13 +23,18 @@ This architecture enforces **HTTP-Only, SameSite, Path-Scoped Cookies**:
 
 ### B. Decoupled Base User & Auth Strategy Discriminator (`UserIdentity`)
 Rather than storing password hashes or OAuth provider fields directly on the core `User` model, entity management is decoupled from authentication mechanisms:
-- **`User` Entity**: Core identity (`id`, `email`, `fullName`, `role`, `phone`, `isActive`).
-- **`UserIdentity` Entity**: Auth provider bindings (`userId`, `provider` enum (`LOCAL`, `GOOGLE`), `providerAccountId`, `passwordHash`).
+- **`User` Entity**: Core identity (`id`, `email`, `fullName`, `role`, `phone`, `pictureUrl`, `isProfileComplete`, `isActive`).
+- **`UserIdentity` Entity**: Auth provider bindings (`userId`, `provider` enum (`LOCAL`, `GOOGLE`), `providerAccountId`, `passwordHash`, `accessToken`, `refreshToken`).
 - **Benefits**:
-  1. Users can register with Email/Password (`provider: LOCAL`) and later link their Google account (`provider: GOOGLE`) to the exact same base user.
-  2. Adding new OAuth providers requires zero schema changes to core user tables.
+  1. **Progressive Account Linking**: Users can register with Email/Password (`provider: LOCAL`) and later sign in with Google (`provider: GOOGLE`) using the same email. The system automatically links the Google identity to the existing base user.
+  2. **Progressive OAuth Scope Storage**: OAuth access tokens and refresh tokens received during Google consent are stored on `UserIdentity`, allowing backend workers (e.g., BullMQ) to perform feature-level integrations (such as Google Calendar sync) on behalf of the user.
 
-### C. Multi-Device Session Management & Token Rotation (`UserSession`)
+### C. Progressive OAuth & Profile Onboarding
+- **Low-Friction Initial Sign In**: Initial Google OAuth requests standard identity scopes (`openid`, `email`, `profile`).
+- **Progressive Onboarding**: If a user logs in via Google for the first time and lacks required role/phone details, `isProfileComplete` is set to `false`. The frontend prompts the user with a progressive onboarding step (`/auth/onboarding`) to complete profile metadata without blocking initial authentication.
+- **Dual Flow Support**: Supports both Server-Side Passport OAuth 2.0 (`/api/auth/google`) and Client-Side Google Identity Services (GIS) ID Token verification (`/api/auth/google/token`).
+
+### D. Multi-Device Session Management & Token Rotation (`UserSession`)
 Refresh tokens are hashed using `bcryptjs` and stored in the `UserSession` MongoDB table:
 - **Token Rotation**: Every time a refresh token is used at `/api/auth/refresh`, the old session is deleted and a fresh session is issued with a new refresh token.
 - **Session Revocation**: Logging out deletes the session from the database, instantly invalidating the refresh token even if someone possesses the raw cookie.
@@ -50,8 +55,10 @@ erDiagram
         string id PK "_id"
         string email UK
         string fullName
-        Role role
+        Role role "ADMIN | DOCTOR | PATIENT | NURSE | STAFF"
         string phone
+        string pictureUrl
+        boolean isProfileComplete
         boolean isActive
         datetime createdAt
         datetime updatedAt
@@ -63,6 +70,8 @@ erDiagram
         AuthProvider provider "LOCAL | GOOGLE"
         string providerAccountId
         string passwordHash
+        string accessToken
+        string refreshToken
         datetime createdAt
         datetime updatedAt
     }
@@ -87,33 +96,36 @@ apps/api/src/app/
 ├── modules/
 │   ├── auth/
 │   │   ├── decorators/
-│   │   │   ├── current-user.decorator.ts    # Custom parameter decorator to extract req.user
+│   │   │   ├── current-user.decorator.ts    # Parameter decorator to extract req.user
 │   │   │   └── roles.decorator.ts           # Metadata decorator to specify required roles
 │   │   ├── dto/
 │   │   │   ├── auth-response.dto.ts         # UserProfileDto and AuthResponseDto
+│   │   │   ├── complete-onboarding.dto.ts   # Post-OAuth profile completion schema
+│   │   │   ├── google-auth.dto.ts           # Google ID Token schema
 │   │   │   ├── login.dto.ts                 # Login validation schema
 │   │   │   └── register.dto.ts              # Registration validation schema
 │   │   ├── guards/
+│   │   │   ├── google-auth.guard.ts         # Passport Google Strategy route guard
 │   │   │   ├── jwt-access.guard.ts          # Protects routes requiring valid access token
 │   │   │   ├── jwt-refresh.guard.ts         # Protects refresh route requiring valid refresh token
 │   │   │   └── roles.guard.ts               # Enforces Role-Based Access Control (RBAC)
 │   │   ├── strategies/
-│   │   │   ├── google.strategy.ts           # Prepared Google OAuth 2.0 configuration stub
+│   │   │   ├── google.strategy.ts           # Passport Google OAuth 2.0 Strategy
 │   │   │   ├── jwt-access.strategy.ts       # Extracts & validates access_token cookie
 │   │   │   └── jwt-refresh.strategy.ts      # Extracts & validates refresh_token cookie
 │   │   ├── utils/
 │   │   │   └── cookie.utils.ts              # setAuthCookies() & clearAuthCookies() helpers
-│   │   ├── auth.controller.ts               # Auth REST endpoints
+│   │   ├── auth.controller.ts               # Auth REST endpoints (Google OAuth, login, register, refresh)
 │   │   ├── auth.module.ts                   # Auth feature module configuration
-│   │   └── auth.service.ts                  # Auth business logic (hashing, sessions, JWTs)
+│   │   └── auth.service.ts                  # Auth business logic (Google validation, account linking, JWTs)
 │   ├── users/
 │   │   ├── users.controller.ts              # Profile retrieval and update endpoints
-│   │   ├── users.module.ts                 # Users feature module configuration
+│   │   ├── users.module.ts                  # Users feature module configuration
 │   │   └── users.service.ts                 # User profile query service
 │   └── prisma/
 │       ├── prisma.module.ts                 # Database access module
 │       └── prisma.service.ts                # Prisma singleton client service
-└── app.module.ts                        # Main application root module
+└── app.module.ts                            # Main application root module
 ```
 
 ---
@@ -154,66 +166,94 @@ sequenceDiagram
 
 ---
 
-### Flow 2: Login (`POST /api/auth/login`)
+### Flow 2: Progressive Google OAuth Login & Account Linking (`GET /api/auth/google/callback`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant Controller as AuthController
+    participant Guard as GoogleAuthGuard
+    participant Strategy as GoogleStrategy
+    participant Service as AuthService
+    participant DB as Prisma (MongoDB)
+    participant Cookie as CookieUtils
+
+    User->>Controller: GET /api/auth/google
+    Controller->>Guard: Redirects to Google OAuth 2.0 Consent Screen
+    User->>Controller: Redirects to GET /api/auth/google/callback?code=...
+    Guard->>Strategy: Exchange authorization code for Google Profile & OAuth Tokens
+    Strategy-->>Controller: GoogleProfileData (googleId, email, fullName, picture, accessToken)
+    Controller->>Service: validateGoogleUser(profileData, res, req)
+    Service->>DB: findUnique User by email
+    alt User Exists (Local or Google)
+        alt Google Identity Missing
+            Service->>DB: create UserIdentity(provider: GOOGLE, providerAccountId)
+            Note over Service: Progressive Account Linking Complete
+        end
+    else New User Registration
+        Service->>DB: $transaction(Create User[isProfileComplete=false] + UserIdentity[GOOGLE])
+    end
+    Service->>Service: Generate JWT Tokens & Create UserSession
+    Service->>Cookie: setAuthCookies(res, tokens)
+    alt isProfileComplete == false
+        Controller-->>User: 302 Redirect to /auth/onboarding
+    else Profile Complete
+        Controller-->>User: 302 Redirect to /dashboard
+    end
+```
+
+---
+
+### Flow 3: Client-Side Google ID Token Verification (`POST /api/auth/google/token`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Angular Client (GSI Button)
+    participant Controller as AuthController
+    participant Service as AuthService
+    participant Google as Google Auth Library (OAuth2Client)
+    participant DB as Prisma (MongoDB)
+    participant Cookie as CookieUtils
+
+    Client->>Controller: POST /api/auth/google/token (idToken)
+    Controller->>Service: verifyGoogleIdToken(idToken, res, req)
+    Service->>Google: verifyIdToken({ idToken, audience })
+    Google-->>Service: Validated Payload (sub, email, name, picture)
+    Service->>Service: validateGoogleUser(profileData, res, req)
+    Service->>DB: Find / Link Account / Create User
+    Service->>Cookie: setAuthCookies(res, tokens)
+    Service-->>Controller: Sanitized User Profile & isProfileComplete flag
+    Controller-->>Client: 200 OK { message, user, isProfileComplete }
+```
+
+---
+
+### Flow 4: Progressive Profile Onboarding (`PATCH /api/auth/progressive-onboarding`)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client as Angular Client
     participant Controller as AuthController
+    participant Guard as JwtAccessGuard
     participant Service as AuthService
     participant DB as Prisma (MongoDB)
-    participant Cookie as CookieUtils
 
-    Client->>Controller: POST /api/auth/login (LoginDto)
-    Note over Controller: ValidationPipe checks email & password presence
-    Controller->>Service: login(dto, res, req)
-    Service->>DB: findUnique({ email }, include identities[LOCAL])
-    alt User Not Found / Inactive / Password Mismatch
-        Service-->>Client: 401 Unauthorized ("Invalid credentials")
-    else Credentials Valid
-        Service->>Service: Generate Access Token & Refresh Token
-        Service->>Service: Hash Refresh Token with bcryptjs
-        Service->>DB: create UserSession(userId, hashedRefreshToken, userAgent, ip)
-        Service->>Cookie: setAuthCookies(res, tokens)
-        Service-->>Controller: Sanitized User Profile
-        Controller-->>Client: 200 OK { message, user }
-    end
+    Client->>Controller: PATCH /api/auth/progressive-onboarding (CompleteOnboardingDto)
+    Controller->>Guard: Validate access_token cookie
+    Controller->>Service: completeProgressiveOnboarding(userId, dto)
+    Service->>DB: $transaction(Update User[isProfileComplete=true, phone, role] + Create ProfilePatient/Doctor)
+    DB-->>Service: Updated User Entity
+    Service->>Service: Invalidate Redis User Profile Cache
+    Service-->>Controller: Sanitized User Profile
+    Controller-->>Client: 200 OK { message, user }
 ```
 
 ---
 
-### Flow 3: Accessing Protected Endpoints (`GET /api/auth/me`, `GET /api/users/profile`)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Angular Client
-    participant Interceptor as Angular AuthInterceptor
-    participant Guard as JwtAccessGuard
-    participant Strategy as JwtAccessStrategy
-    participant Controller as AuthController/UsersController
-    participant DB as Prisma (MongoDB)
-
-    Client->>Interceptor: Request GET /api/auth/me
-    Note over Interceptor: Clones request with withCredentials: true
-    Interceptor->>Guard: HTTP Request (with access_token Cookie)
-    Guard->>Strategy: Extract req.cookies.access_token
-    Strategy->>Strategy: Verify JWT signature & expiration
-    Strategy->>DB: findUnique({ id: payload.sub })
-    alt User Valid & Active
-        DB-->>Strategy: User Entity
-        Strategy-->>Guard: Attach user to req.user
-        Guard-->>Controller: Allow execution
-        Controller-->>Client: 200 OK { user }
-    else Invalid Token or User Inactive
-        Strategy-->>Client: 401 Unauthorized
-    end
-```
-
----
-
-### Flow 4: Token Refresh & Rotation (`POST /api/auth/refresh`)
+### Flow 5: Token Refresh & Rotation (`POST /api/auth/refresh`)
 
 ```mermaid
 sequenceDiagram
@@ -226,7 +266,6 @@ sequenceDiagram
     participant Cookie as CookieUtils
 
     Client->>Guard: POST /api/auth/refresh (with refresh_token Cookie)
-    Note over Guard: Path scoped to /api/auth/refresh
     Guard->>Strategy: Extract req.cookies.refresh_token
     Strategy->>Strategy: Verify JWT signature & expiration
     Strategy-->>Service: refreshTokens(userId, refreshToken, res, req)
@@ -247,31 +286,18 @@ sequenceDiagram
 
 ---
 
-### Flow 5: Logout (`POST /api/auth/logout`)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Angular Client
-    participant Controller as AuthController
-    participant Service as AuthService
-    participant DB as Prisma (MongoDB)
-    participant Cookie as CookieUtils
-
-    Client->>Controller: POST /api/auth/logout (JwtAccessGuard)
-    Controller->>Service: logout(userId, refreshToken, res)
-    Service->>DB: findMany UserSessions for userId
-    Service->>Service: Find matching session hash & delete from DB
-    Service->>Cookie: clearAuthCookies(res)
-    Note over Cookie: Clears access_token & refresh_token cookies (Max-Age=0)
-    Service-->>Client: 200 OK { message: "Logged out successfully" }
-```
-
----
-
 ## 5. Frontend Angular Integration (`hospital-admin` & `patient-web`)
 
-Because tokens are managed via HTTP-Only cookies, frontends do **not** read or store raw token strings in `localStorage` or maintain local wrapper services. All frontend applications consume `AuthApiService` directly from `@hospital-services/api-client`.
+All frontend applications consume `AuthApiService` directly from `@hospital-services/api-client`.
+
+### Auth API Service Methods (`AuthApiService`):
+- `login(credentials: LoginCredentials)`: Standard email/password login.
+- `register(credentials: RegisterCredentials)`: Standard email/password registration.
+- `loginWithGoogleRedirect()`: Initiates browser redirect to `/api/auth/google`.
+- `loginWithGoogleToken(credentials: GoogleTokenCredentials)`: Verifies client-side Google GSI ID Token.
+- `completeOnboarding(credentials: CompleteOnboardingCredentials)`: Sends profile onboarding metadata.
+- `fetchCurrentUser()`: Auto-restores user session on page load via HTTP-Only cookie.
+- `logout()`: Clears HTTP-Only cookies and resets Angular user signals (`currentUser`, `isAuthenticated`, `isProfileComplete`).
 
 ### Angular `authInterceptor` Configuration (`withCredentials: true`):
 [`apps/hospital-admin/src/app/core/interceptors/auth.interceptor.ts`](file:///Users/gparthasrikar/Documents/projects/hospital-services/hospital-services/apps/hospital-admin/src/app/core/interceptors/auth.interceptor.ts)
@@ -287,65 +313,3 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq);
 };
 ```
-
-### Angular `errorInterceptor` Configuration:
-[`apps/hospital-admin/src/app/core/interceptors/error.interceptor.ts`](file:///Users/gparthasrikar/Documents/projects/hospital-services/hospital-services/apps/hospital-admin/src/app/core/interceptors/error.interceptor.ts)
-```typescript
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
-import { AuthApiService } from '@hospital-services/api-client';
-
-export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const router = inject(Router);
-  const authApi = inject(AuthApiService);
-
-  return next(req).pipe(
-    catchError((error: HttpErrorResponse) => {
-      if (error.status === 401) {
-        authApi.logout().subscribe(); // Clears user signals and invalidates session
-        router.navigate(['/auth/login']);
-      }
-      return throwError(() => error);
-    })
-  );
-};
-```
-
-### NestJS CORS Configuration:
-[`apps/api/src/main.ts`](file:///Users/gparthasrikar/Documents/projects/hospital-services/hospital-services/apps/api/src/main.ts)
-```typescript
-app.enableCors({
-  origin: [
-    'http://localhost:4200', // patient-web
-    'http://localhost:4201', // hospital-admin
-    'http://localhost:3000',
-  ],
-  credentials: true, // Required for cross-site cookie transmission
-});
-```
-
----
-
-## 6. Future Extension Roadmap: Google OAuth 2.0 Integration
-
-To activate Google OAuth 2.0 in the future:
-
-1. **Install Strategy Package**:
-   ```bash
-   pnpm add passport-google-oauth20 && pnpm add -D @types/passport-google-oauth20
-   ```
-2. **Environment Variables**:
-   Update `.env` with actual credentials from Google Cloud Console:
-   ```env
-   GOOGLE_CLIENT_ID="your-google-client-id"
-   GOOGLE_CLIENT_SECRET="your-google-client-secret"
-   GOOGLE_CALLBACK_URL="http://localhost:3000/api/auth/google/callback"
-   ```
-3. **Activate `GoogleStrategy`**:
-   Extend Passport `GoogleStrategy` in `google.strategy.ts`. When a user authenticates via Google:
-   - Extract `profile.id` and `profile.emails[0].value`.
-   - Query `UserIdentity` where `provider = GOOGLE` and `providerAccountId = profile.id`.
-   - If not found, create base `User` record and link `UserIdentity(provider: GOOGLE, providerAccountId: profile.id)`.
-   - Issue tokens, create `UserSession`, and attach HTTP-Only cookies.
