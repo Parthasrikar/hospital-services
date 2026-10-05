@@ -24,7 +24,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
 export class RegisterPage {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private authApi = inject(AuthApiService);
+  public authApi = inject(AuthApiService);
 
   isLoading = false;
   serverError: string | null = null;
@@ -69,6 +69,10 @@ export class RegisterPage {
     if (control.hasError('required')) return 'Please confirm your password';
     if (this.registerForm.hasError('passwordMismatch')) return 'Passwords do not match';
     return undefined;
+  }
+
+  onGoogleLogin(): void {
+    this.authApi.loginWithGoogleRedirect();
   }
 
   onSubmit(): void {

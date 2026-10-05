@@ -12,6 +12,22 @@
   background-color: var(--stag-background-brand-subtle);
 }
 
+.google-btn {
+  background-color: var(--stag-background-white-base);
+  border-color: var(--stag-border-gray-subtle);
+  color: var(--stag-text-primary, #1e293b);
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(241, 245, 249, 0.6);
+    border-color: var(--stag-border-gray-normal, #cbd5e1);
+  }
+}
+
+.bg-border {
+  background-color: var(--stag-border-gray-subtle, #e2e8f0);
+}
+
 .text-secondary {
   color: var(--stag-text-secondary);
 }

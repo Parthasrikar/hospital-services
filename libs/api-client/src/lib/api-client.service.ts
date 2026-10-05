@@ -9,6 +9,13 @@ import { axiosClient } from './axios-client';
 })
 export class ApiClientService {
   /**
+   * Returns API Base URL string
+   */
+  getBaseUrl(): string {
+    return (axiosClient.defaults.baseURL as string) || 'http://localhost:3000/api';
+  }
+
+  /**
    * HTTP GET Request returning RxJS Observable<T>
    */
   get<T>(url: string, config?: AxiosRequestConfig): Observable<T> {

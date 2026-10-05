@@ -12,6 +12,11 @@ export const AUTH_ROUTES: Routes = [
       import('./pages/register/register.page').then((m) => m.RegisterPage),
   },
   {
+    path: 'onboarding',
+    loadComponent: () =>
+      import('./pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
+  },
+  {
     path: '',
     redirectTo: 'login',
     pathMatch: 'full',
