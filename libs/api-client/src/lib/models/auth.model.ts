@@ -8,6 +8,8 @@ export interface SharedUser {
   fullName: string;
   role: Role | string;
   phone?: string | null;
+  pictureUrl?: string | null;
+  isProfileComplete?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -26,7 +28,25 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface GoogleTokenCredentials {
+  idToken: string;
+  role?: Role | string;
+}
+
+export interface CompleteOnboardingCredentials {
+  role?: Role | string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string;
+  address?: string;
+  specialization?: string;
+  licenseNumber?: string;
+  consultationFee?: number;
+}
+
 export interface AuthApiResponse {
   message: string;
   user: SharedUser;
+  isProfileComplete?: boolean;
 }

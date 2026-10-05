@@ -15,7 +15,7 @@ import { AuthApiService } from '@hospital-services/api-client';
 export class LoginPage {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private authApi = inject(AuthApiService);
+  public authApi = inject(AuthApiService);
 
   isLoading = false;
   serverError: string | null = null;
@@ -41,6 +41,10 @@ export class LoginPage {
     return 'Invalid password';
   }
 
+  onGoogleLogin(): void {
+    this.authApi.loginWithGoogleRedirect();
+  }
+
   onSubmit(): void {
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
@@ -56,9 +60,13 @@ export class LoginPage {
     };
 
     this.authApi.login(credentials).subscribe({
-      next: () => {
+      next: (res) => {
         this.isLoading = false;
-        this.router.navigate(['/dashboard']);
+        if (res.isProfileComplete === false) {
+          this.router.navigate(['/auth/onboarding']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.isLoading = false;
