@@ -1,0 +1,30 @@
+.register-page {
+  background-color: var(--stag-background-gray-subtle);
+}
+
+.register-card {
+  background-color: var(--stag-background-white-base);
+  border: 1px solid var(--stag-border-gray-subtle);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+}
+
+.icon-badge {
+  background-color: var(--stag-background-brand-subtle);
+}
+
+.text-secondary {
+  color: var(--stag-text-secondary);
+}
+
+.color-error {
+  color: var(--stag-text-error-normal);
+}
+
+.link-brand {
+  color: var(--stag-text-brand);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
